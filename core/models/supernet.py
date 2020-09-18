@@ -59,12 +59,12 @@ class GeneralizedMTLNASNet(nn.Module):
             'net1_paths': net1_fusion_ops,
             'net2_paths': net2_fusion_ops,
         })
-        
+
         path_cost = np.array([stage.out_channels for stage in net1.stages])
         path_cost = path_cost[:, None] * net1_connectivity_matrix
         path_cost = path_cost * net1_connectivity_matrix.sum() / path_cost.sum()
         path_cost = path_cost[np.nonzero(path_cost)]
-        
+
         self.register_buffer("path_costs", torch.tensor(path_cost).float())
 
         self._step = 0
@@ -84,7 +84,7 @@ class GeneralizedMTLNASNet(nn.Module):
 
         self.arch_training = False
         self.retraining = False
-        
+
         self.supernet = False
         if cfg.MODEL.SUPERNET:
             print("Running Supernet Baseline")
@@ -161,7 +161,7 @@ class GeneralizedMTLNASNet(nn.Module):
         net_dist = dist.relaxed_bernoulli.RelaxedBernoulli(temp, logits=path_weights)
         path_connectivity = net_dist.rsample()
         return path_connectivity
-    
+
     def bernoulli_connectivity(self, path_weights):
         net_dist = dist.bernoulli.Bernoulli(logits=path_weights)
         path_connectivity = net_dist.sample()
@@ -173,7 +173,7 @@ class GeneralizedMTLNASNet(nn.Module):
     def onehot_connectivity(self, path_weights):
         path_connectivity = (path_weights > 0.).float()
         return path_connectivity
-    
+
     def all_connectivity(self, path_weights):
         return torch.ones_like(path_weights)
 
@@ -193,7 +193,7 @@ class GeneralizedMTLNASNet(nn.Module):
                 xs.append(x)
                 ys.append(y)
 
-            net1_path_ids = np.nonzero(self.net1_connectivity_matrix[stage_id])[0]
+            net1_path_ids = np.nonzero(self.net1_connectivity_matrix[stage_id])[0] # nonzero 返回数组元素不为零的下标
             net2_path_ids = np.nonzero(self.net2_connectivity_matrix[stage_id])[0]
             net1_path_weights = self.net1_alphas[stage_id][net1_path_ids]
             net2_path_weights = self.net2_alphas[stage_id][net2_path_ids]
@@ -244,19 +244,19 @@ class GeneralizedMTLNASNet(nn.Module):
                 assert connectivity == 'onehot'
                 net1_path_connectivity = self.onehot_connectivity(net1_path_weights)
                 net2_path_connectivity = self.onehot_connectivity(net2_path_weights)
-                
+
             if isinstance(x, list):
                 net1_fusion_input = [x[0]]
                 net2_fusion_input = [y[0]]
             else:
                 net1_fusion_input = [x]
                 net2_fusion_input = [y]
-                
+
             for idx, input_id in enumerate(net1_path_ids):
                 net1_fusion_input.append(net1_path_connectivity[idx]*ys[input_id])
             for idx, input_id in enumerate(net2_path_ids):
                 net2_fusion_input.append(net2_path_connectivity[idx]*xs[input_id])
-            
+
             if isinstance(x, list):
                 x[0] = self.paths['net1_paths'][stage_id](net1_fusion_input)
                 y[0] = self.paths['net2_paths'][stage_id](net2_fusion_input)

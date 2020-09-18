@@ -13,13 +13,13 @@ def depth_limited_connectivity_matrix(stage_config, limit=3):
     :param limit: limit of depth difference between connected layers, pass in -1 to disable
     :return: connectivity matrix
     """
-    network_depth = np.sum(stage_config)
-    stage_depths = np.cumsum([0] + stage_config)
+    network_depth = np.sum(stage_config) # 每一行求和
+    stage_depths = np.cumsum([0] + stage_config) # 按照所给定的轴参数返回元素的梯形累计和
     matrix = np.zeros((network_depth, network_depth)).astype('int')
     for i in range(network_depth):
-        j_limit = stage_depths[np.argmax(stage_depths > i) - 1]
+        j_limit = stage_depths[np.argmax(stage_depths > i) - 1] # 查找sd中大于i的第一个元素的前一个元素
         for j in range(network_depth):
-            if j <= i and i - j < limit and j >= j_limit:
+            if j <= i and i - j < limit and j >= j_limit: # 连接两端的节点距离小于3且是前后关系
                 matrix[i, j] = 1.
     return matrix
 

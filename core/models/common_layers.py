@@ -11,11 +11,11 @@ class Stage(nn.Module):
         else:
             self.feature = layers
         self.out_channels = out_channels
-        
+
     def forward(self, x):
         return self.feature(x)
-    
-    
+
+
 def batch_norm(num_features, eps=1e-3, momentum=0.05):
     bn = nn.BatchNorm2d(num_features, eps, momentum)
     nn.init.constant_(bn.weight, 1)
@@ -28,10 +28,10 @@ def get_nddr_bn(cfg):
         return lambda width: batch_norm(width, eps=1e-03, momentum=cfg.MODEL.BATCH_NORM_MOMENTUM)
     else:
         raise NotImplementedError
-        
+
 
 def get_nddr(cfg, in_channels, out_channels):
-    
+
     if cfg.ARCH.SEARCHSPACE == '':
         assert in_channels == out_channels
         if cfg.MODEL.NDDR_TYPE == '':
@@ -59,7 +59,7 @@ class CrossStitch(nn.Module):
     def __init__(self, cfg, out_channels):
         super(CrossStitch, self).__init__()
         init_weights = cfg.MODEL.INIT
-        
+
         self.a11 = nn.Parameter(torch.tensor(init_weights[0]))
         self.a22 = nn.Parameter(torch.tensor(init_weights[0]))
         self.a12 = nn.Parameter(torch.tensor(init_weights[1]))
@@ -69,17 +69,17 @@ class CrossStitch(nn.Module):
         out1 = self.a11 * feature1 + self.a21 * feature2
         out2 = self.a12 * feature1 + self.a22 * feature2
         return out1, out2
-    
-    
+
+
 class NDDR(nn.Module):
     def __init__(self, cfg, out_channels):
         super(NDDR, self).__init__()
         init_weights = cfg.MODEL.INIT
         norm = get_nddr_bn(cfg)
-        
+
         self.conv1 = nn.Conv2d(out_channels * 2, out_channels, kernel_size=1, bias=False)
         self.conv2 = nn.Conv2d(out_channels * 2, out_channels, kernel_size=1, bias=False)
-        
+
         # Initialize weight
         if len(init_weights):
             self.conv1.weight = nn.Parameter(torch.cat([
@@ -154,7 +154,7 @@ class SingleSidedAsymmetricCrossStitch(nn.Module):
     def __init__(self, cfg, in_channels, out_channels):
         super(SingleSidedAsymmetricCrossStitch, self).__init__()
         init_weights = cfg.MODEL.INIT
-        
+
         assert in_channels >= out_channels
         # check if out_channel divides in_channels
         assert in_channels % out_channels == 0
@@ -172,20 +172,20 @@ class SingleSidedAsymmetricCrossStitch(nn.Module):
         for i, feature in enumerate(features):
             out += self.a[i] * feature
         return out
-    
-    
+
+
 class SingleSidedAsymmetricNDDR(nn.Module):
     def __init__(self, cfg, in_channels, out_channels):
         super(SingleSidedAsymmetricNDDR, self).__init__()
         init_weights = cfg.MODEL.INIT
         norm = get_nddr_bn(cfg)
-        
+
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         assert in_channels >= out_channels
         # check if out_channel divides in_channels
         assert in_channels % out_channels == 0
         multipiler = in_channels / out_channels - 1
-        
+
         # Initialize weight
         if len(init_weights):
             weight = [torch.eye(out_channels) * init_weights[0]] +\
@@ -193,7 +193,7 @@ class SingleSidedAsymmetricNDDR(nn.Module):
             self.conv.weight = nn.Parameter(torch.cat(weight, dim=1).view(out_channels, -1, 1, 1))
         else:
             nn.init.kaiming_normal_(self.conv.weight, mode='fan_out', nonlinearity='relu')
-        
+
         self.activation = nn.ReLU()
         self.bn = norm(out_channels)
         nn.init.constant_(self.bn.weight, 1.)

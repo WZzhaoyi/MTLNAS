@@ -10,10 +10,11 @@ import torch.optim as optim
 import torch.distributed as dist
 from tensorboardX import SummaryWriter
 
+# import apex
 # from apex import amp
 
 # ad-hoc way to deal with python 3.7.4
-import os, sys
+import sys
 lib_path = os.path.abspath(os.path.join('.'))
 print(lib_path)
 sys.path.append(lib_path)
@@ -90,6 +91,8 @@ def main():
             backend="nccl", init_method="env://"
         )
         synchronize()
+    else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
     cfg.merge_from_file(args.config_file)
     cfg.EXPERIMENT_NAME = args.config_file.split('/')[-1][:-5]
@@ -100,7 +103,7 @@ def main():
     assert cfg.TEST.BATCH_SIZE % num_gpus == 0
     cfg.TEST.BATCH_SIZE = int(cfg.TEST.BATCH_SIZE // num_gpus)
     cfg.freeze()
-    
+
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d~%H:%M:%S")
     experiment_log_dir = os.path.join(cfg.LOG_DIR, cfg.EXPERIMENT_NAME, timestamp)
     if not os.path.exists(experiment_log_dir) and logging:
@@ -186,7 +189,7 @@ def main():
     ]
     optimizer = optim.SGD(parameter_dict, lr=cfg.TRAIN.LR, momentum=cfg.TRAIN.MOMENTUM,
                           weight_decay=cfg.TRAIN.WEIGHT_DECAY)
-    
+
     if cfg.ARCH.OPTIMIZER == 'sgd':
         arch_optimizer = torch.optim.SGD(model.arch_parameters(),
                                          lr=cfg.ARCH.LR,
@@ -222,7 +225,7 @@ def main():
         arch_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=0.1)
     else:
         raise NotImplementedError
-        
+
     if cfg.TRAIN.APEX:
         model, [arch_optimizer, optimizer] = amp.initialize(model, [arch_optimizer, optimizer], opt_level="O1", num_losses=2)
 
@@ -279,21 +282,21 @@ def main():
             arch_optimizer.zero_grad()
             arch_result = model.loss(image_search, (label_1_search, label_2_search))
             arch_loss = arch_result.loss
-            
-            
+
+
             # Mixed Precision
             if cfg.TRAIN.APEX:
                 with amp.scale_loss(arch_loss, arch_optimizer, loss_id=0) as scaled_loss:
                     scaled_loss.backward()
             else:
                 arch_loss.backward()
-                
+
             arch_optimizer.step()
             model.arch_eval()
 
             assert not model.arch_training
             optimizer.zero_grad()
-            
+
             result = model.loss(image, (label_1, label_2))
 
             out1, out2 = result.out1, result.out2
@@ -301,7 +304,7 @@ def main():
             loss2 = result.loss2
 
             loss = result.loss
-            
+
             # Mixed Precision
             if cfg.TRAIN.APEX:
                 with amp.scale_loss(loss, optimizer, loss_id=1) as scaled_loss:
@@ -330,7 +333,7 @@ def main():
                 writer.add_image('image', process_image(image[0], train_full_data.image_mean), steps)
                 task1.log_visualize(out1, label_1, loss1, writer, steps)
                 task2.log_visualize(out2, label_2, loss2, writer, steps)
-                
+
                 if cfg.ARCH.ENTROPY_REGULARIZATION:
                     writer.add_scalar('loss/entropy_weight', arch_result.entropy_weight, steps)
                     writer.add_scalar('loss/entropy_loss', arch_result.entropy_loss.data.item(), steps)
@@ -362,7 +365,7 @@ def main():
                                                           os.path.join(network_path, "%s_network.png"%str(steps).zfill(5))
                                                          )
                     writer.add_image('network', connectivity_plot, steps)
-                
+
 
             if steps % cfg.TRAIN.EVAL_INTERVAL == 0:
                 if distributed:
