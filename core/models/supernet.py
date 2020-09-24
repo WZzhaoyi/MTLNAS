@@ -15,8 +15,7 @@ from core.utils.losses import poly, entropy_loss, l1_loss
 class GeneralizedMTLNASNet(nn.Module):
     def __init__(self, cfg, net1, net2,
                  net1_connectivity_matrix,
-                 net2_connectivity_matrix
-                ):
+                 net2_connectivity_matrix):
         """
         :param net1: task one network
         :param net2: task two network

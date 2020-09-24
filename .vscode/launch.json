@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: train_nas.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            // "/home/data/zbabby/workspace/Auto-ML/DALI/docker/yes/envs/MTLNAS/lib/python3.6/site-packages/torch/distributed/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config-file=configs/ablation/vgg_nyuv2_default.yaml",
+                // "--nproc_per_node=1",
+                // "tools/train_nas.py",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES":"2",
+            }
+        }
+    ]
+}

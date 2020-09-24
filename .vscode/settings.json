@@ -1,5 +1,7 @@
 {
-    "python.pythonPath": "MTLNASenv/bin/python",
+    "python.pythonPath": "/home/data/zbabby/workspace/Auto-ML/DALI/docker/yes/envs/MTLNAS/bin/python",
     "python.linting.flake8Args": ["--max-line-length=248",
-                                  "--extend-ignore=E402,E303,E261,F401,E128,E131"],
+                                "--extend-ignore=E402,E303,E261,F401,E128,E131"
+                            ],
+                            "python.dataScience.jupyterServerURI": "local",
 }
